@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.css">
   <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
 </head>
 <body>
   <div id="navbar"></div>
@@ -143,6 +144,13 @@
 
       const result = await faceapi.detectSingleFace(videoEl, options).withFaceExpressions()
 
+      if (connected && result && result.expressions) {
+        console.log(result.expressions)
+        message = new Paho.MQTT.Message(JSON.stringify(result.expressions));
+        message.destinationName = "face_expression";
+        client.send(message);
+      }
+
       updateTimeStats(Date.now() - ts)
 
       if (result) {
@@ -175,9 +183,21 @@
 
     function updateResults() {}
 
+    function initMQTT() {
+      client = new Paho.MQTT.Client("127.0.0.1", 9001, "face_expression_detector");
+      client.connect({onSuccess:onMQTTConnect})
+      connected = false
+    }
+
+    function onMQTTConnect() {
+      console.log("Connected to MQTT")
+      connected = true
+    }
+
     $(document).ready(function() {
       renderNavBar('#navbar', 'webcam_face_expression_recognition')
       initFaceDetectionControls()
+      initMQTT()
       run()
     })
   </script>
